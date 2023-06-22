@@ -1,6 +1,7 @@
 package Polling
 
 import (
+	"MotadataPugins/Utils"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/crypto/ssh"
@@ -9,19 +10,160 @@ import (
 	"time"
 )
 
+func errorDisplay(res map[string]interface{}) {
+
+	bytes, _ := json.Marshal(res)
+
+	fmt.Println(string(bytes))
+
+}
+
+func getSystemInfo(sshClient *ssh.Client, errorList []string, result map[string]interface{}) {
+
+	sessionForSystemInfo, err := sshClient.NewSession()
+
+	if err != nil {
+
+		errorList = append(errorList, err.Error())
+	}
+
+	commandOutputOfSystemnfo, _ := sessionForSystemInfo.CombinedOutput(Utils.COMMAND_FOR_SYSTEM_INFO)
+
+	outputOfSystemInfo := string(commandOutputOfSystemnfo)
+
+	systemInfo := strings.Split(outputOfSystemInfo, "\n")
+
+	result["system.name"] = systemInfo[0]
+
+	result["operating.system.name"] = systemInfo[1]
+
+	result["operating.system.version"] = systemInfo[2]
+}
+
+func getMemoryInfo(sshClient *ssh.Client, errorList []string, result map[string]interface{}) {
+
+	sessionForMemory, err := sshClient.NewSession()
+
+	if err != nil {
+
+		errorList = append(errorList, err.Error())
+	}
+
+	commandOutputOfMemory, _ := sessionForMemory.CombinedOutput(Utils.COMMAND_FOR_MEMORY)
+
+	outputOfMemory := string(commandOutputOfMemory)
+
+	MemoryInfo := strings.Split(outputOfMemory, "\n")
+
+	result["memory.used.percentage"] = MemoryInfo[0]
+
+	result["memory.free.percentage"] = MemoryInfo[1]
+}
+
+func getCpuInfo(sshClient *ssh.Client, errorList []string, result map[string]interface{}) {
+
+	sessionForCPUInfo, err := sshClient.NewSession()
+
+	if err != nil {
+
+		errorList = append(errorList, err.Error())
+	}
+
+	commandOutputForCpuInfo, _ := sessionForCPUInfo.CombinedOutput(Utils.COMMAND_FOR_CPU)
+
+	outputForCpuInfo := string(commandOutputForCpuInfo)
+
+	splitedNewLineCpuInfo := strings.Split(outputForCpuInfo, "\n")
+
+	splitedBySpaceCpuInfo := strings.Split(splitedNewLineCpuInfo[2], " ")
+
+	result["cpu.user.percentage"] = splitedBySpaceCpuInfo[0]
+
+	result["cpu.system.percentage"] = splitedBySpaceCpuInfo[1]
+
+	result["cpu.idle.percentage"] = splitedBySpaceCpuInfo[3]
+}
+
+func getDiskInfo(sshClient *ssh.Client, errorList []string, result map[string]interface{}) {
+
+	sessionForDiskInfo, err := sshClient.NewSession()
+
+	if err != nil {
+
+		errorList = append(errorList, err.Error())
+	}
+
+	commandOutputForDisk, _ := sessionForDiskInfo.CombinedOutput(Utils.COMMAND_FOR_DISK)
+
+	outputForDisk := string(commandOutputForDisk)
+
+	splitedByPercentageDiskInfo := strings.Split(outputForDisk, "%")
+
+	result["disk.used.percentage"] = splitedByPercentageDiskInfo[0]
+
+}
+
+func getUptimeInfo(sshClient *ssh.Client, errorList []string, result map[string]interface{}) {
+
+	sessionForUptimeInfo, err := sshClient.NewSession()
+
+	if err != nil {
+
+		errorList = append(errorList, err.Error())
+	}
+
+	commandOutputForUptimeInfo, _ := sessionForUptimeInfo.CombinedOutput(Utils.COMMAND_FOR_UPTIME)
+
+	outputForUptimeInfo := string(commandOutputForUptimeInfo)
+
+	result["uptime"] = strings.Split(outputForUptimeInfo, "\n")[0]
+
+}
+
+func getIfConfigInfo(sshClient *ssh.Client, errorList []string, result map[string]interface{}) {
+
+	sessionForIfConfig, err := sshClient.NewSession()
+
+	if err != nil {
+
+		errorList = append(errorList, err.Error())
+	}
+
+	commandOutputForIfConfig, _ := sessionForIfConfig.CombinedOutput(Utils.COMMAND_FOR_IFCONFIG)
+
+	outputForUIfConfigInfo := string(commandOutputForIfConfig)
+
+	splitedByNewLineForIfConfig := strings.Split(outputForUIfConfigInfo, "\n")
+
+	splitedBySpaceForIfConfig := strings.Split(splitedByNewLineForIfConfig[0], " ")
+
+	result["lo.name"] = splitedBySpaceForIfConfig[0]
+
+	result["lo.RX.bytes"] = splitedBySpaceForIfConfig[1]
+
+	result["lo.TX.bytes"] = splitedBySpaceForIfConfig[2]
+
+	splitedBySpaceForIfConfig = strings.Split(splitedByNewLineForIfConfig[1], " ")
+
+	result["en.name"] = splitedBySpaceForIfConfig[0]
+
+	result["en.RX.bytes"] = splitedBySpaceForIfConfig[1]
+
+	result["en.TX.bytes"] = splitedBySpaceForIfConfig[2]
+
+	splitedBySpaceForIfConfig = strings.Split(splitedByNewLineForIfConfig[2], " ")
+
+	result["wl.name"] = splitedBySpaceForIfConfig[0]
+
+	result["wl.RX.bytes"] = splitedBySpaceForIfConfig[1]
+
+	result["wl.TX.bytes"] = splitedBySpaceForIfConfig[2]
+
+}
+
 func PollingSSH(data map[string]interface{}, wg *sync.WaitGroup) {
 
 	defer wg.Done()
-
-	const commandForCPU = "mpstat |awk  '{if ($4 != \"CPU\") print $5 \" \" $7 \" \" $8 \" \" $14}'"
-
-	const commandForMemory = "free -m | grep \"Mem\" | awk '{print $3/$2*100}' && free -m | grep \"Mem\" | awk '{print $4/$2*100}'"
-
-	const commandForDisk = "df . | awk 'NR==2 {print $5}'"
-
-	const commandForUptime = "uptime -p"
-
-	const commandForSystemInfo = "hostnamectl | grep \"Static\"| awk '{print $3}' && hostnamectl | grep \"Operating\"| awk '{print $3}' && hostnamectl |grep \"Operating\"| awk '{print $4}'"
 
 	currentTime := time.Now()
 
@@ -33,6 +175,7 @@ func PollingSSH(data map[string]interface{}, wg *sync.WaitGroup) {
 
 			res["error"] = r
 
+			errorDisplay(res)
 		}
 	}()
 
@@ -42,7 +185,7 @@ func PollingSSH(data map[string]interface{}, wg *sync.WaitGroup) {
 
 	sshHost := (data["IPADDRESS"]).(string)
 
-	deviceId := (data["DEVICEID"])
+	deviceId := data["DEVICEID"]
 
 	config := &ssh.ClientConfig{
 
@@ -75,135 +218,42 @@ func PollingSSH(data map[string]interface{}, wg *sync.WaitGroup) {
 
 	result := make(map[string]interface{})
 
-	/*Firing first command and manipulating th output*/
+	if len(errorList) == 0 {
 
-	session1, err := sshClient.NewSession()
+		getSystemInfo(sshClient, errorList, result)
 
-	if err != nil {
+		getMemoryInfo(sshClient, errorList, result)
 
-		errorList = append(errorList, err.Error())
+		getCpuInfo(sshClient, errorList, result)
+
+		getDiskInfo(sshClient, errorList, result)
+
+		getUptimeInfo(sshClient, errorList, result)
+
+		getIfConfigInfo(sshClient, errorList, result)
+
+		result["timestamp"] = currentTime.Format("2006-01-02 15:04:05")
+
+		result["id"] = deviceId
+
+		result["ip"] = sshHost
+
+		var ans []map[string]interface{}
+
+		ans = append(ans, result)
+
+		bytes, _ := json.Marshal(ans)
+
+		fmt.Println(string(bytes))
+
+	} else {
+
+		response := make(map[string]interface{})
+
+		response["error"] = errorList
+
+		errorDisplay(response)
+
 	}
-
-	commandOutput1, _ := session1.CombinedOutput(commandForSystemInfo)
-
-	output := string(commandOutput1)
-
-	system1 := strings.Split(output, "\n")
-
-	result["system.name"] = system1[0]
-
-	result["operating.system.name"] = system1[1]
-
-	result["operating.system.version"] = system1[2]
-
-	/*Ending of first Command*/
-
-	/*============================================================================================*/
-
-	/*Firing second Command*/
-
-	session2, err := sshClient.NewSession()
-
-	if err != nil {
-
-		errorList = append(errorList, err.Error())
-	}
-
-	commandOutput2, _ := session2.CombinedOutput(commandForMemory)
-
-	output2 := string(commandOutput2)
-
-	system2 := strings.Split(output2, "\n")
-
-	result["memory.used.percentage"] = system2[0]
-
-	result["memory.free.percentage"] = system2[1]
-
-	/*Ending of second Command*/
-
-	/*============================================================================================*/
-
-	/*Firing third Command*/
-
-	session3, err := sshClient.NewSession()
-
-	if err != nil {
-
-		errorList = append(errorList, err.Error())
-	}
-
-	commandOutput3, _ := session3.CombinedOutput(commandForCPU)
-
-	output3 := string(commandOutput3)
-
-	res3 := strings.Split(output3, "\n")
-
-	system3 := strings.Split(res3[2], " ")
-
-	result["cpu.user.percentage"] = system3[0]
-
-	result["cpu.system.percentage"] = system3[1]
-
-	result["cpu.idle.percentage"] = system3[3]
-
-	/*Ending of third Command*/
-
-	/*============================================================================================*/
-
-	/*Starting of fourth command*/
-
-	session4, err := sshClient.NewSession()
-
-	if err != nil {
-
-		errorList = append(errorList, err.Error())
-	}
-
-	commandOutput4, _ := session4.CombinedOutput(commandForDisk)
-
-	output4 := string(commandOutput4)
-
-	res4 := strings.Split(output4, "%")
-
-	result["disk.used.percentage"] = res4[0]
-
-	/*Ending of fourth Command*/
-
-	/*============================================================================================*/
-
-	/*Starting of fifth command*/
-
-	session5, err := sshClient.NewSession()
-
-	if err != nil {
-
-		errorList = append(errorList, err.Error())
-	}
-
-	commandOutput5, _ := session5.CombinedOutput(commandForUptime)
-
-	output5 := string(commandOutput5)
-
-	res5 := strings.Split(output5, "\n")
-
-	result["uptime"] = res5[0]
-
-	result["timestamp"] = currentTime.Format("2006-01-02 15:04:05")
-
-	result["id"] = deviceId
-
-	result["ip"] = sshHost
-
-	/*============================================================================================*/
-
-	/*Ending of fifth command*/
-
-	var ans []map[string]interface{}
-
-	ans = append(ans, result)
-
-	bytes, _ := json.Marshal(ans)
-
-	fmt.Println(string(bytes))
 
 }

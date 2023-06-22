@@ -39,7 +39,7 @@ func Discovery(data map[string]interface{}) []map[string]interface{} {
 
 		Config: ssh.Config{Ciphers: []string{
 
-			"aes128-ctr", "aes192-ctr", "aes256-ctr",
+			"aes256-ctr",
 		}},
 	}
 

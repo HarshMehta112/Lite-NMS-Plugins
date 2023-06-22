@@ -65,8 +65,6 @@ func main() {
 
 			} else if batchData[0]["category"] == "polling" {
 
-				//var answer []map[string]interface{}
-
 				wg := sync.WaitGroup{}
 
 				wg.Add(len(batchData))
@@ -76,10 +74,6 @@ func main() {
 					go Polling.PollingSSH(batchData[index], &wg)
 				}
 				wg.Wait()
-
-				//bytes, _ := json.Marshal(answer)
-				//
-				//fmt.Println(string(bytes))
 
 			} else {
 
